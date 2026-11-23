@@ -1,0 +1,14 @@
+; FUZIX mnemonics for memory addresses etc (Sharp MZ-2500)
+;
+; Memory model: CPU window 7 (E000-FFFF) is fixed common RAM (physical page
+; 0Fh). Windows 0-6 are switched per process. The kernel bank keeps text VRAM
+; in window 6 (C000-DFFF) permanently.
+;
+U_DATA__TOTALSIZE	.equ 0x200	; 256+256 bytes at the start of common
+U_STASH_PAGE		.equ 0x0D	; shared page holding every process's udata stash
+PROGBASE		.equ 0x0000
+PROGLOAD		.equ 0x0100
+Z80_TYPE		.equ 1		; NMOS (Z80B)
+Z80_MMU_HOOKS		.equ 0
+CONFIG_SWAP		.equ 0
+NBUFS			.equ 6

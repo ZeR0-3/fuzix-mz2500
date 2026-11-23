@@ -1,0 +1,40 @@
+-mwxuy
+-i fuzix.ihx
+-b _CODE=0x0100
+-b _COMMONMEM=0xE000
+-l z80
+platform/platform-mz2500/crt0.rel
+platform/platform-mz2500/ixh_asm.rel
+platform/platform-mz2500/commonmem.rel
+platform/platform-mz2500/mz2500.rel
+platform/platform-mz2500/emm.rel
+platform/platform-mz2500/video.rel
+platform/platform-mz2500/sasi.rel
+platform/platform-mz2500/platform.rel
+platform/platform-mz2500/start_asm.rel
+platform/platform-mz2500/lowlevel_asm.rel
+platform/platform-mz2500/usermem_asm.rel
+platform/platform-mz2500/memalloc_asm.rel
+platform/platform-mz2500/version_asm.rel
+platform/platform-mz2500/umem.rel
+platform/platform-mz2500/kbd.rel
+platform/platform-mz2500/bufcache.rel
+platform/platform-mz2500/tricks.rel
+platform/platform-mz2500/data_asm.rel
+platform/platform-mz2500/devices_asm.rel
+platform/platform-mz2500/devio_asm.rel
+platform/platform-mz2500/fs_asm.rel
+platform/platform-mz2500/inode_asm.rel
+platform/platform-mz2500/q_asm.rel
+platform/platform-mz2500/proc_asm.rel
+platform/platform-mz2500/sys_asm.rel
+platform/platform-mz2500/kprint_asm.rel
+platform/platform-mz2500/tty_asm.rel
+platform/platform-mz2500/devfd.rel
+platform/platform-mz2500/bmap.rel
+platform/platform-mz2500/open_asm.rel
+platform/platform-mz2500/vt_asm.rel
+platform/platform-mz2500/pagemap.rel
+platform/platform-mz2500/devtty_asm.rel
+platform/platform-mz2500/devhd_asm.rel
+-e

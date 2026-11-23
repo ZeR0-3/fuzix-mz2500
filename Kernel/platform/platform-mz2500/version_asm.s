@@ -1,0 +1,40 @@
+; version_asm.s - sysinfo block (version/uname) and its initial image
+	.module version_asm
+	.globl _sysinfo
+	.area _INITIALIZED
+_sysinfo::
+	.ds 60
+	.area _INITIALIZER
+__xinit__sysinfo:
+	.db #0x3c
+	.db #0x01
+	.db #0x0a
+	.db #0x0f
+	.dw #0x0032
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.db #0x00
+	.db #0x00
+	.db #0x00
+	.db #0x00
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.dw #0x0000
+	.ascii "0.5"
+	.db 0x00
+	.ascii "Fuzix"
+	.db 0x00
+	.db 0x00
+	.ascii "mz2500"
+	.db 0x00

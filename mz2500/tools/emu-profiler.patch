@@ -1,0 +1,131 @@
+--- a/core/mz2500.h	2026-11-22 12:22:04.713638428 +0900
++++ b/core/mz2500.h	2026-11-22 12:23:37.005015916 +0900
+@@ -8,6 +8,7 @@
+ #include <memory>
+ #include <string>
+ #include <vector>
++#include <map>
+ 
+ #include "core/adpcm.h"
+ #include "core/banked_memory.h"
+@@ -292,6 +293,16 @@
+     }
+     const LoopStats& loop_stats() const { return loop_; }
+ 
++    // PC cycle profiler (development aid): cycles spent per instruction address.
++    void enable_pc_profile(bool on) {
++        if (on) pc_prof_.assign(0x20000, 0); else pc_prof_.clear();
++    }
++    const std::vector<uint64_t>& pc_profile() const { return pc_prof_; }
++    // Caller profiler: count return addresses seen on the stack top whenever
++    // execution reaches addr (kernel-mapped callers only).
++    void watch_callers(int addr) { caller_pc_ = addr; callers_.clear(); }
++    const std::map<uint32_t, uint64_t>& callers() const { return callers_; }
++
+     // Frames the real IPL ROM spends (RAM check, drive spin-up, header load)
+     // before jumping to the boot sector. Calibrated against EmuZ-2500 so
+     // frame-numbered input pulses line up between the two emulators.
+@@ -830,6 +841,9 @@
+     int loop_start_ = -1;
+     int loop_end_ = -1;
+     uint64_t loop_last_ = 0;
++    std::vector<uint64_t> pc_prof_;
++    int caller_pc_ = -1;
++    std::map<uint32_t, uint64_t> callers_;
+     LoopStats loop_;
+ 
+     int trap_watch_ = -1;
+--- a/core/mz2500.cpp	2026-11-22 12:22:04.714951738 +0900
++++ b/core/mz2500.cpp	2026-11-22 12:23:37.005744604 +0900
+@@ -1546,6 +1546,11 @@
+             }
+             if (!loop_last_ && cpu_.pc == (uint16_t)loop_start_) loop_last_ = cpu_.cyc;
+         }
++        if (caller_pc_ >= 0 && cpu_.pc == (uint16_t)caller_pc_) {
++            const uint16_t sp = cpu_.sp;
++            const uint16_t ret = (uint16_t)(mem_.read(sp) | (mem_.read((uint16_t)(sp + 1)) << 8));
++            callers_[ret]++;
++        }
+         if (trap_watch_ >= 0 && !trap_hit_ && cpu_.pc == (uint16_t)trap_watch_) {
+             trap_hit_ = true;
+             dump_forensics("watch PC reached");
+@@ -1556,6 +1561,11 @@
+         observe_stack_instruction(cpu_.pc, cpu_.sp, true);
+         z80_step(&cpu_);
+         cpu_step_active_ = false;
++        if (!pc_prof_.empty()) {
++            const uint8_t pg = mem_.map_of(insn_pc_ >> 13);
++            const bool user = insn_pc_ < 0xE000 && !(pg >= 0x02 && pg <= 0x07);
++            pc_prof_[insn_pc_ + (user ? 0x10000 : 0)] += cpu_.cyc - step_start;
++        }
+         observe_stack_instruction(insn_pc_, cpu_.sp, false);
+         if (boot_mode_ != 0) {
+             const uint64_t elapsed = cpu_.cyc - step_start;
+--- a/cli/main.cpp	2026-11-22 12:22:04.716232080 +0900
++++ b/cli/main.cpp	2026-11-22 12:23:37.006241479 +0900
+@@ -225,6 +225,7 @@
+         "  --stack-entry-pc ADDR\n"
+         "                        start measurement at this runtime PC (default D000)\n"
+         "  --stack-isr-pc ADDR  ISR entry PC for the nested-stack report (default ECDD)\n"
++        "  --pc-profile FRAME:PATH  from FRAME, write cycles per PC (hex addr, cycles) to PATH\n"
+         "  --stall-profile FRAME profile VRAM waits by instruction from FRAME on\n"
+         "  --stall-top N         sites the stall profile lists (default 20)\n"
+         "  --sprite-cells        per frame, count text cells holding a sprite code\n"
+@@ -305,6 +306,9 @@
+     long stack_data_floor = 0xCF9E;
+     long stack_entry_pc = 0xD000;
+     long stack_isr_pc = 0xECDD;
++    long caller_pc = -1;
++    long pc_profile_from = -1;
++    std::string pc_profile_path;
+     long stall_profile_from = -1; // frame the VRAM wait profiler starts at
+     int stall_top = 20;           // sites listed in its report
+     bool sprite_cells = false;    // per-frame count of text cells >= 128
+@@ -467,6 +471,18 @@
+             const char* v = value();
+             if (!v) { usage(); return 2; }
+             stack_isr_pc = std::strtol(v, nullptr, 16);
++        } else if (arg == "--caller-profile") {
++            const char* v = value();
++            if (!v) { usage(); return 2; }
++            caller_pc = std::strtol(v, nullptr, 16);
++        } else if (arg == "--pc-profile") {
++            const char* v = value();
++            if (!v) { usage(); return 2; }
++            std::string spec = v;
++            size_t colon = spec.find(':');
++            if (colon == std::string::npos) { usage(); return 2; }
++            pc_profile_from = std::strtol(spec.substr(0, colon).c_str(), nullptr, 10);
++            pc_profile_path = spec.substr(colon + 1);
+         } else if (arg == "--stall-profile") {
+             const char* v = value();
+             if (!v) { usage(); return 2; }
+@@ -1007,6 +1023,8 @@
+             if (i >= j.start && i < j.end) joy |= j.mask;
+         }
+         machine.set_joystick_mask(joy);
++        if (pc_profile_from >= 0 && i == pc_profile_from) machine.enable_pc_profile(true);
++        if (caller_pc >= 0 && i == (pc_profile_from >= 0 ? pc_profile_from : 0)) machine.watch_callers((int)caller_pc);
+         if (stall_profile_from >= 0 && i == stall_profile_from) {
+             machine.enable_stall_profile(true);
+             machine.reset_stall_profile();
+@@ -1194,6 +1212,19 @@
+                         s.stall / f, (double)(s.stall + s.weight) / (double)s.hits);
+         }
+     }
++    if (caller_pc >= 0) {
++        for (const auto& kv : machine.callers())
++            std::printf("caller: %04x %llu\n", kv.first, (unsigned long long)kv.second);
++    }
++    if (pc_profile_from >= 0 && !pc_profile_path.empty()) {
++        std::FILE* pf = std::fopen(pc_profile_path.c_str(), "w");
++        if (pf) {
++            const auto& pp = machine.pc_profile();
++            for (size_t a = 0; a < pp.size(); a++)
++                if (pp[a]) std::fprintf(pf, "%05zx %llu\n", a, (unsigned long long)pp[a]);
++            std::fclose(pf);
++        }
++    }
+     if (loop_monitor_pc >= 0) {
+         const mz::Mz2500::LoopStats& l = machine.loop_stats();
+         const double mean = l.passes ? (double)l.total / (double)l.passes : 0.0;
