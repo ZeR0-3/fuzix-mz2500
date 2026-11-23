@@ -14,10 +14,10 @@
 #define CONFIG_LARGE_IO_DIRECT(x)	0
 #define BOOTDEVICENAMES "hd#,fd"
 
-/* Text screen: 40 x 25 as left by the IPL */
-#define VT_WIDTH	40
+/* Text screen: 80 x 25 (switched from the IPL's 40 columns at video init) */
+#define VT_WIDTH	80
 #define VT_HEIGHT	25
-#define VT_RIGHT	39
+#define VT_RIGHT	79
 #define VT_BOTTOM	24
 
 #define TICKSPERSEC 50		/* 8253 ch0 -> 50Hz */

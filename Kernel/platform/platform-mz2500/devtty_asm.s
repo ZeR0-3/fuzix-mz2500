@@ -82,7 +82,7 @@ _held_row::
 	.area _CODE
 	.globl _vstart, ___hard_di
 ; ---- cell helpers --------------------------------------------------
-; cell_off: e=y c=x -> hl = ((y*40+x)+vstart) & 0x7ff ; clobbers bc,de
+; cell_off: e=y c=x -> hl = ((y*80+x)+vstart) & 0x7ff ; clobbers bc,de
 cell_off:
 	ld	l, e
 	ld	h, #0
@@ -90,6 +90,7 @@ cell_off:
 	add	hl, hl
 	add	hl, hl
 	add	hl, de
+	add	hl, hl
 	add	hl, hl
 	add	hl, hl
 	add	hl, hl
@@ -125,11 +126,24 @@ pc_put:
 	ld	(hl), d
 	ret
 _mz_video_init::
+	; 80 columns: CRTC registers 7/8 = 09h/59h, then E8h bit 5 (the keyboard
+	; scan keeps bits 7-5 of E8h)
+	ld	a, #7
+	out	(0xF4), a
+	ld	a, #0x09
+	out	(0xF5), a
+	ld	a, #8
+	out	(0xF4), a
+	ld	a, #0x59
+	out	(0xF5), a
+	in	a, (0xE8)
+	or	a, #0x20
+	out	(0xE8), a
 	call	_vram_clear
 	xor	a, a
 	ld	(_cursor_shown), a
 	jp	_vtinit
-; clear_lines(y, n): clear_across(y, 0, n*40)
+; clear_lines(y, n): clear_across(y, 0, n*80)
 _clear_lines::
 	ld	hl, #3
 	add	hl, sp
@@ -140,6 +154,7 @@ _clear_lines::
 	add	hl, hl
 	add	hl, hl
 	add	hl, de
+	add	hl, hl
 	add	hl, hl
 	add	hl, hl
 	add	hl, hl

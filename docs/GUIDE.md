@@ -22,7 +22,7 @@ README の Quick start を参照。設定は `mz2500/tools/env.sh`(`MZ_FUZIX`、
 - `tools/profsum.py`、`emu-profiler.patch`: エミュレータに PC プロファイラを足すパッチと、結果の集計。
 
 ## 4. 構成
-- 窓 7(E000〜)は固定のコモン領域、窓 0〜6 を B4h/B5h でバンク切替。カーネルバンクは 0100〜BFFF(窓 6 はテキスト VRAM)。ユーザーバンクは複数ページ(EMM のページも使う)。
+- 窓 7(E000〜)は固定のコモン領域、窓 0〜6 を B4h/B5h でバンク切替。カーネルバンクは 0100〜BFFF(窓 6 はテキスト VRAM)。画面は 80 桁 × 25 行(起動時に切り替え)。ユーザーバンクは複数ページ(EMM のページも使う)。
 - 割り込み: 8253 ch0 による 50Hz タイマ、キーボード。割り込み状態は `_int_disabled` で自前管理(di/ei を直接使うコードは要注意)。
 - ドライバ: `devhd_asm.s` + `sasi.s`(SASI)、`devfd.s`(MB8877)、`devtty_asm.s` + `vt_asm.s` + `video.s`(テキスト VRAM、キーボード、VT52 風)、`emm.s`。
 - ソースの一覧は Makefile の `ASRCS` と `fuzix.lnk`。

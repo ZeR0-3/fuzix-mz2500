@@ -19,7 +19,7 @@
 	.globl _clear_lines, _tty_inproc, _tty_ioctl, _vtattr_cap
 	.globl ___hard_di, ___hard_irqrestore
 
-VT_RIGHT	=	39
+VT_RIGHT	=	79
 VT_BOTTOM	=	24
 
 	.area _VIDEO

@@ -76,12 +76,12 @@ outchar:
 	ld a, #0x38
 	out (0xB5), a
 	ld hl, (dbgpos)
-	ld de, #1000		; 40 x 25 cells: wrap inside the last row
+	ld de, #2000		; 80 x 25 cells: wrap inside the last row
 	or a
 	sbc hl, de
 	add hl, de
 	jr c, dbgok
-	ld hl, #960
+	ld hl, #1920
 dbgok:
 	ld de, #0xC000
 	add hl, de

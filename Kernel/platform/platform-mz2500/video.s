@@ -1,7 +1,7 @@
 ;
 ;	MZ-2500 text console primitives in assembler.
 ;	Text1 plane C000h, attribute C800h, Text2 plane D000h (window 6),
-;	40 columns x 25 rows. Glyph blank = Text1 80h / Text2 8Ch.
+;	80 columns x 25 rows (E8h bit 5, CRTC 7/8 set in _mz_video_init). Glyph blank = Text1 80h / Text2 8Ch.
 ;	C callable (SDCC: args on stack, caller cleans up):
 ;	  void scroll_up(void), scroll_down(void),
 ;	  void clear_across(int8_t y, int8_t x, int16_t l), void vram_clear(void)
@@ -17,17 +17,17 @@
 TEXT1		.equ 0xC000
 TEXTA		.equ 0xC800
 TEXT2		.equ 0xD000
-COLS		.equ 40
+COLS		.equ 80
 ROWS		.equ 25
 
 	.area _COMMONMEM
 
-; The text planes are 2KB rings (800h cells) and the CRTC shows 1000 cells
+; The text planes are 2KB rings (800h cells) and the CRTC shows 2000 cells
 ; from the start cell in CRTC registers 01h (low) / 02h (high 3 bits).
 ; Scrolling only moves that start cell by one row and blanks the new row.
 ; _vstart = ring offset of logical row 0.
 
-; scroll_up: new bottom row = old row 25 position (vstart + 1000)
+; scroll_up: new bottom row = old row 25 position (vstart + 2000)
 _scroll_up:
 	ld hl, (_vstart)
 	ld de, #COLS * ROWS
@@ -38,7 +38,7 @@ _scroll_up:
 	add hl, de
 	jr setstart
 
-; scroll_down: the new top row is vstart - 40
+; scroll_down: the new top row is vstart - COLS
 _scroll_down:
 	ld hl, (_vstart)
 	ld de, #COLS
@@ -49,7 +49,7 @@ _scroll_down:
 	pop hl
 	jr setstart
 
-; blankrow: HL = ring offset (masked here), blank 40 cells; preserves nothing
+; blankrow: HL = ring offset (masked here), blank COLS cells; preserves nothing
 blankrow:
 	ld a, h
 	and #7
@@ -106,17 +106,18 @@ _clear_across:
 	ld a, b
 	ld l, a
 	ld h, #0
-	add hl, hl
-	add hl, hl
-	add hl, hl		; 8y
 	push de			; count
 	ld e, l
-	ld d, h
+	ld d, h			; DE = y
 	add hl, hl
-	add hl, hl		; 32y
-	add hl, de		; 40y
+	add hl, hl		; 4y
+	add hl, de		; 5y
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl		; 80y
 	ld b, #0
-	add hl, bc		; 40y + x
+	add hl, bc		; 80y + x
 	ld bc, (_vstart)
 	add hl, bc
 	ld a, h
